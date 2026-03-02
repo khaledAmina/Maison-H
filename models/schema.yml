@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: maison_h_raw
+    description: "Données brutes de la Maison H provenant de RAW_DB"
+    database: RAW_DB  # On force dbt à sortir d'ANALYTICS_DB pour lire ici
+    schema: PUBLIC
+    tables:
+      - name: src_sales_transactions
+        columns:
+          - name: trans_id
+            tests:
+              - unique:
+                  config:
+                    severity: warn 
+              - not_null
+
+      - name: src_crm_clients
+        description: "Export JSON du CRM (données non dédupliquées)"
+    
+      - name: src_products_catalog
+        description: "Référentiel articles (Maroquinerie, Soie, etc.)"
+
+      - name: src_stores
+        description: "Liste des boutiques et canaux de vente"
+
+      - name: src_exchange_rates
+        description: "Taux de Change"
