@@ -5,6 +5,8 @@ WITH source AS (
 cleaned AS (
     SELECT
         client_id,
+        first_name,
+        last_name,
         -- Pseudonymisation SHA-256
         SHA2_HEX(CONCAT(LOWER(TRIM(email)), 'MAISON_H_SALT_2026')) AS email_hash,
         SHA2_HEX(CONCAT(TRIM(phone), 'MAISON_H_SALT_2026')) AS phone_hash,

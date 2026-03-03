@@ -36,7 +36,13 @@ clean-targets:         # directories to be removed by `dbt clean`
 # using the `{{ config(...) }}` macro.
 
 models:
-  my_new_project:
-    # Applies to all files under models/example/
-    example:
+  maison_h:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table # Ccouche Silver
+      +schema: intermediate
+    marts:
       +materialized: table
+      +schema: marts
