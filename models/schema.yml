@@ -20,9 +20,19 @@ sources:
     
       - name: src_products_catalog
         description: "Référentiel articles (Maroquinerie, Soie, etc.)"
+        columns:
+          - name: sku
+            tests:
+              - unique
+              - not_null
 
       - name: src_stores
         description: "Liste des boutiques et canaux de vente"
-
+        columns:
+          - name: store_id
+            tests:
+              - unique
+              - not_null
+              
       - name: src_exchange_rates
         description: "Taux de Change"

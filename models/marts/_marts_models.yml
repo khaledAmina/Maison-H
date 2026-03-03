@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: fct_sales
+    description: "Table de faits centrale des transactions de vente."
+    columns:
+      - name: transaction_id
+        tests:
+          - unique
+          - not_null
+      - name: client_key
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_clients')
+                field: client_key
+      - name: amount_eur
+        tests:
+          - not_null
+
+  - name: dim_products
+    description: "Référentiel des produits (SKU)."
+    columns:
+      - name: product_key
+        tests:
+          - unique
+          - not_null
