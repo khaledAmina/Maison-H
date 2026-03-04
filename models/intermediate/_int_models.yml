@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: int_sales_transactions
+    description: "Transactions nettoyées et converties."
+    columns:
+      - name: currency_code
+        tests:
+          - relationships:
+              arguments:
+                to: source('maison_h_raw', 'src_exchange_rates') # Ou votre table de référence des taux
+                field: currency_code

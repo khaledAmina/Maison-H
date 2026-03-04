@@ -33,3 +33,4 @@ SELECT
     s.channel
 FROM sales_transactions s
 LEFT JOIN clients c ON s.client_id = c.source_client_id
+WHERE s.amount_eur IS NOT NULL
