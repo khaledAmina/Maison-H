@@ -66,7 +66,3 @@ Pour mettre à jour les données et vérifier la qualité, utilisez les commande
 ### 🛡️ Note sur la Conformité RGPD
 
 Aucune donnée personnelle identifiable (PII) n'est stockée en clair dans la base `ANALYTICS_DB`. Le lien entre un achat et un client se fait exclusivement via une **clé technique anonymisée**.
-
----
-
-**Cette documentation est prête à être partagée. Elle montre que votre projet est structuré, sécurisé et prêt pour la production. Est-ce que cela vous convient pour votre présentation d'équipe ?**
