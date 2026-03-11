@@ -17,3 +17,10 @@ models:
     marts:
       +materialized: table
       # +schema: marts
+
+
+vars:
+  # Seuils de segmentation pour la Maison H
+  client_threshold: 2000
+  top_client_threshold: 10000
+  vic_threshold: 50000
