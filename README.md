@@ -1,6 +1,8 @@
+# 💎 Plateforme de Données - Maison H (Modern Data Stack)
+
 ## 1. Présentation du Projet
 
-Ce projet consiste en la mise en place d'une plateforme de données (Modern Data Stack) pour la **Maison H**, une enseigne de luxe. L'objectif est de centraliser les ventes, les clients (CRM) et les données produits pour fournir des analyses fiables et sécurisées.
+Ce projet consiste en la mise en place d'une plateforme de données pour la **Maison H**, une enseigne de luxe. L'objectif est de centraliser les ventes, les clients (CRM) et les données produits pour fournir des analyses fiables, segmentées et sécurisées.
 
 ---
 
@@ -11,58 +13,75 @@ Le projet repose sur une architecture **Médaillon** au sein de **Snowflake**, o
 ### A. Couche RAW (Bronze)
 
 * **Rôle** : Réception des fichiers bruts (CSV pour les ventes/produits, JSON pour le CRM).
-* **Gouvernance** : Mise en place de **Masking Policies** (Masquage dynamique) sur Snowflake pour protéger les emails et numéros de téléphone. Seul le rôle `DBT_TRANSFORMER` peut voir les données en clair pour les transformer.
+* **Gouvernance** : Mise en place de **Masking Policies** sur Snowflake. Seul le rôle `DBT_TRANSFORMER` accède aux données PII en clair pour la transformation.
 
-### B. Couche STAGING (Silver - Préparation)
+### B. Couche STAGING & INTERMEDIATE (Silver)
 
-* **Modèles** : `stg_sales_transactions`, `stg_crm_clients`, `stg_products_catalog`, `stg_stores`, `stg_exchange_rates`.
-* **Actions** : Renommage des colonnes, typage (Cast), et **Pseudonymisation**. Les emails sont transformés en Hash SHA-256 pour respecter le RGPD tout en permettant de suivre un client.
+* **Nettoyage & Typage** : Cast des dates et montants, renommage normalisé.
+* **Pseudonymisation** : Les emails clients sont transformés en **Hash SHA-256** pour la conformité RGPD.
+* **Qualité (Quarantaine)** : Isolation des données aberrantes (dates futures, devises inconnues) dans `int_sales_quarantined`.
 
-### C. Couche INTERMEDIATE (Silver - Logique Métier)
+### C. Couche MARTS (Gold - Analyse)
 
-* **`int_sales_transactions`** : Nettoyage, déduplication et conversion monétaire.
-* **`int_sales_quarantined`** : Isolation des lignes avec erreurs (dates futures, montants aberrants, devises inconnues).
-* **Utilité** : Garantit que seules les données valides atteignent la couche finale.
+Cette couche est le point d'entrée pour Power BI. Elle s'appuie sur une modélisation hybride :
 
-### D. Couche MARTS (Gold - Analyse)
+#### 🏗️ Modélisation en Étoile (En cours)
 
-* **Structure** : Schéma en étoile (Star Schema).
-* **Table de faits (`fct_sales`)** : Table centrale optimisée en mode **incrémental** pour réduire les coûts Snowflake.
-* **Dimensions (`dim_clients`, `dim_products`, etc.)** : Tables de référence contenant tous les attributs descriptifs.
+Le socle de performance repose sur un **Star Schema** :
+
+* **Fait** : `fct_sales` (Table centrale, matérialisation **incrémentale**, clusterisée par `date_key`).
+* **Dimensions** : `dim_clients`, `dim_products`, `dim_stores`.
+
+#### 📊 Tables de Restitution Métiers
+
+Construites sur le schéma en étoile pour simplifier l'accès aux KPIs :
+
+1. **`mart_turnover_analysis`** :
+* Analyse du CA (Brut vs Net), Panier Moyen et volumes de transactions.
+* Granularité : Magasin / Métier / Mois.
+
+
+2. **`mart_vic_segmentation`** :
+* Calcul de la **Lifetime Value (LTV)** et segmentation dynamique via variables dbt (Prospect, Client, Top, V.I.C.).
+* Identification du **Métier de prédilection** et suivi de la rétention.
+
+
+3. **`mart_supply_monitoring`** (Nouveau) :
+* Pilotage de la Supply Chain : **Stock Coverage** (couverture sur 30j) et Taux de rotation.
+* Alertes automatiques : Flag sur stock critique (<7j) ou dormant (>90j).
+
+
 
 ---
 
 ## 3. Qualité et Intégrité des Données
 
-Pour garantir la fiabilité des rapports, dbt exécute des tests à chaque cycle de production :
-
-| Test | Colonne concernée | Utilité métier |
+| Test | Cible | Utilité métier |
 | --- | --- | --- |
-| `unique` | `transaction_id` | Évite de compter deux fois une vente (CA faussé). |
-| `not_null` | `amount_eur` | Garantit que chaque vente a un montant convertible. |
-| `relationships` | `client_key` | Vérifie que chaque client facturé existe dans le référentiel CRM. |
-| `accepted_values` | `currency_code` | S'assure que seules les devises gérées par la finance sont traitées. |
+| `unique` | `transaction_id` | Évite le double comptage du CA. |
+| `not_null` | `amount_eur` | Garantit la complétude financière. |
+| `accepted_values` | `segment` | Valide la logique de segmentation client (Prospect -> VIC). |
+| `relationships` | `client_key` | Vérifie que chaque vente est rattachée à un client existant. |
 
 ---
 
 ## 4. Optimisation FinOps & Performance
 
-* **Warehouses Auto-suspend** : Paramétré sur 60 secondes pour ne payer que la consommation réelle.
-* **Matérialisation Incrémentale** : Utilisation de la stratégie `delete+insert` sur `fct_sales` pour ne traiter que les données du jour, économisant ainsi les crédits Snowflake.
-* **Clustering** : Données triées par `date_key` pour accélérer les temps de réponse dans Power BI.
+* **Clusterisation** : Les tables de faits sont triées par `date_key` pour accélérer les visuels Power BI.
+* **Incrémentalité** : Utilisation de la stratégie `merge` (ou `delete+insert`) pour ne traiter que les nouvelles transactions quotidiennes.
+* **Auto-suspend** : Entrepôts Snowflake configurés pour s'éteindre après 60s d'inactivité.
 
 ---
 
-## 5. Guide d'Utilisation du Pipeline
+## 5. Guide d'Utilisation
 
-Pour mettre à jour les données et vérifier la qualité, utilisez les commandes suivantes dans votre terminal dbt :
-
-1. `dbt run` : Lance les transformations (Staging -> Intermediate -> Marts).
-2. `dbt test` : Vérifie l'intégrité de toutes les données.
-3. `dbt run --full-refresh --select fct_sales` : À utiliser en cas de modification majeure des règles de filtrage.
+1. **Installation** : `dbt deps`
+2. **Exécution standard** : `dbt run`
+3. **Tests de qualité** : `dbt test`
+4. **Rafraîchissement total** : `dbt run --full-refresh --select fct_sales` (uniquement si modification de la logique historique).
 
 ---
 
 ### 🛡️ Note sur la Conformité RGPD
 
-Aucune donnée personnelle identifiable (PII) n'est stockée en clair dans la base `ANALYTICS_DB`. Le lien entre un achat et un client se fait exclusivement via une **clé technique anonymisée**.
+Aucune donnée personnelle identifiable (PII) n'est stockée en clair dans la base finale. Le lien entre un achat et un client se fait exclusivement via une **clé technique anonymisée**.
