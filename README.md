@@ -52,8 +52,6 @@ Construites sur le schéma en étoile pour simplifier l'accès aux KPIs :
 
 
 
----
-
 ## 3. Qualité et Intégrité des Données
 
 | Test | Cible | Utilité métier |
